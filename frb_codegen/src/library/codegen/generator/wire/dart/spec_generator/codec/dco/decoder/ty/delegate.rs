@@ -4,6 +4,7 @@ use crate::codegen::generator::wire::dart::spec_generator::codec::dco::decoder::
 use crate::codegen::ir::mir::ty::delegate::{
     MirTypeDelegate, MirTypeDelegateArrayMode, MirTypeDelegatePrimitiveEnum, MirTypeDelegateTime,
 };
+use crate::codegen::ir::mir::ty::primitive::MirTypePrimitive;
 use crate::library::codegen::generator::api_dart::spec_generator::base::ApiDartGenerator;
 use crate::library::codegen::generator::api_dart::spec_generator::info::ApiDartGeneratorInfoTrait;
 use crate::library::codegen::ir::mir::ty::MirTypeTrait;
@@ -86,9 +87,23 @@ impl<'a> WireDartCodecDcoGeneratorDecoderTrait for DelegateWireDartCodecDcoGener
                 "return BigInt.parse(raw);".to_owned()
             }
             MirTypeDelegate::RustAutoOpaqueExplicit(mir) => format!(r"return dco_decode_{}(raw);", mir.inner.safe_ident()),
+            MirTypeDelegate::CastedPrimitive(mir) => {
+                    let postfix = match mir.inner {
+                        MirTypePrimitive::I64  => "i_64",
+                        MirTypePrimitive::Isize  => "isize",
+                        MirTypePrimitive::U64 => "u_64",
+                        MirTypePrimitive::Usize  => "usize",
+                        // frb-coverage:ignore-start
+                        _ => return "throw UnimplementedError('Not implemented in this codec, please use the other one');".into(),
+                        // frb-coverage:ignore-end
+                    };
+                    format!(
+                    r"return dco_decode_{}(raw);",
+                    postfix,
+                )
+                }
             MirTypeDelegate::ProxyVariant(_)
             | MirTypeDelegate::ProxyEnum(_)
-            | MirTypeDelegate::CastedPrimitive(_)
             | MirTypeDelegate::CustomSerDes(_)
             | MirTypeDelegate::Lifetimeable(_) =>
                 "throw UnimplementedError('Not implemented in this codec, please use the other one');".into(),
