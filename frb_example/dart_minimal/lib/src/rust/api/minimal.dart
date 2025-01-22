@@ -8,3 +8,6 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 Future<int> minimalAdder({required int a, required int b}) =>
     RustLib.instance.api.crateApiMinimalMinimalAdder(a: a, b: b);
+
+Future<void> sleepFn({required FutureOr<void> Function(int) sleepCb}) =>
+    RustLib.instance.api.crateApiMinimalSleepFn(sleepCb: sleepCb);
