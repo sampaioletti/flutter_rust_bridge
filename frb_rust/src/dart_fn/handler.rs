@@ -58,7 +58,7 @@ impl DartFnHandler {
         let _ = panic::catch_unwind(move || {
             let catch_unwind_result = panic::catch_unwind(move || {
                 if let Some(completer) = (self.completers.lock().unwrap()).remove(&call_id) {
-                    completer.send(message).unwrap();
+                    completer.send(message).ok();
                 }
             });
             if let Err(err) = catch_unwind_result {
