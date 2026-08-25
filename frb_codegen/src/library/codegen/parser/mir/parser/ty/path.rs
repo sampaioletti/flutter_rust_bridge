@@ -39,15 +39,21 @@ impl TypeParserWithContext<'_, '_, '_> {
             if let Some(ans) = self.parse_type_path_data_primitive(last_segment)? {
                 return Ok(ans);
             }
-            if let Some(ans) =
-                self.parse_type_path_data_concrete(last_segment, &splayed_segments)?
-            {
-                return Ok(ans);
-            }
+            // A user-defined struct/enum must be checked before the well-known concrete-type
+            // shortcuts below: `check_prefix` in `parse_type_path_data_concrete` treats a bare,
+            // unqualified name (e.g. `Value` brought into scope via `use my_mod::Value;`) as a
+            // match for the corresponding external type (e.g. `serde_json::Value`) since it can't
+            // see the actual import. A real Rust name lookup would have the local `use` shadow the
+            // global name, so resolve the user's own type first and only fall back otherwise.
             if let Some(ans) = self.parse_type_path_data_struct(path, last_segment, None)? {
                 return Ok(ans);
             }
             if let Some(ans) = self.parse_type_path_data_enum(path, last_segment)? {
+                return Ok(ans);
+            }
+            if let Some(ans) =
+                self.parse_type_path_data_concrete(last_segment, &splayed_segments)?
+            {
                 return Ok(ans);
             }
             if let Some(ans) = self.parse_type_path_data_trait(last_segment)? {
