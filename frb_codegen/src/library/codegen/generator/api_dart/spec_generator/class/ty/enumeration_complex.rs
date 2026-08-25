@@ -3,7 +3,7 @@ use crate::codegen::generator::api_dart::spec_generator::class::field::{
 };
 use crate::codegen::generator::api_dart::spec_generator::class::ApiDartGeneratedClass;
 use crate::codegen::generator::api_dart::spec_generator::misc::{
-    generate_dart_comments, generate_dart_maybe_implements_exception,
+    generate_dart_comments, generate_dart_maybe_implements_exception, generate_dart_metadata,
 };
 use crate::codegen::ir::mir::field::MirField;
 use crate::codegen::ir::mir::ty::enumeration::{MirEnum, MirEnumVariant, MirVariantKind};
@@ -25,7 +25,7 @@ impl EnumRefApiDartGenerator<'_> {
         let variants = src
             .variants()
             .iter()
-            .map(|variant| self.generate_mode_complex_variant(variant))
+            .map(|variant| self.generate_mode_complex_variant(variant, src.is_non_final))
             .collect_vec()
             .join("\n");
         let name = &self.mir.ident.0.name;
@@ -70,22 +70,27 @@ impl EnumRefApiDartGenerator<'_> {
         })
     }
 
-    fn generate_mode_complex_variant(&self, variant: &MirEnumVariant) -> String {
-        let args = match &variant.kind {
-            MirVariantKind::Value => "".to_owned(),
+    fn generate_mode_complex_variant(&self, variant: &MirEnumVariant, is_non_final: bool) -> String {
+        let (args, metadata) = match &variant.kind {
+            MirVariantKind::Value => ("".to_owned(), "".to_owned()),
             MirVariantKind::Struct(st) => {
-                if st.is_fields_named {
+                let args = if st.is_fields_named {
                     self.generate_variant_struct_named(st)
                 } else {
                     self.generate_variant_struct_unnamed(st)
-                }
+                };
+                (args, generate_dart_metadata(&st.dart_metadata_raw))
             }
         };
 
         let implements_exception = self.generate_implements_exception(variant);
 
+        // `@unfreezed` classes have mutable fields, so their factory constructors cannot be
+        // `const` (mirrors freezed's own requirement).
+        let maybe_const = if is_non_final { "" } else { "const" };
+
         format!(
-            "{} {}const factory {}.{}({}) = {};",
+            "{} {}{metadata}{maybe_const} factory {}.{}({}) = {};",
             implements_exception,
             generate_dart_comments(&variant.comments),
             self.mir.ident.0.name,
