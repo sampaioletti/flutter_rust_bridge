@@ -110,7 +110,10 @@ impl WireDartCodecDcoGeneratorDecoderTrait for DelegateWireDartCodecDcoGenerator
                     _ => return "throw UnimplementedError('Not implemented in this codec, please use the other one');".into(),
                     // frb-coverage:ignore-end
                 };
-                format!(r"return dco_decode_{}(raw);",postfix)
+                // `dco_decode_{i_64,isize}` return `PlatformInt64` and `dco_decode_{u_64,usize}`
+                // return `BigInt` — both need `.toInt()` to narrow down to the plain Dart `int`
+                // that `CastedPrimitive` exposes (mirrors the SSE decoder's `inner.toInt()`).
+                format!(r"return dco_decode_{}(raw).toInt();", postfix)
             }
             MirTypeDelegate::ProxyVariant(_)
             | MirTypeDelegate::ProxyEnum(_)

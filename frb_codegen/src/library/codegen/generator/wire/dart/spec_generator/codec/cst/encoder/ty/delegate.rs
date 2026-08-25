@@ -144,23 +144,20 @@ impl WireDartCodecCstGeneratorEncoderTrait for DelegateWireDartCodecCstGenerator
                 self.mir.get_delegate().safe_ident(),
             ))),
             MirTypeDelegate::CastedPrimitive(mir) => {
-                let postfix = match mir.inner {
-                    MirTypePrimitive::I64 => "i_64",
-                    MirTypePrimitive::Isize => "isize",
-                    MirTypePrimitive::U64 => "u_64",
-                    MirTypePrimitive::Usize => "usize",
+                // `raw` is a plain Dart `int` here (see `CastedPrimitive`'s dart_api_type), but
+                // `cst_encode_i_64`/`isize` take the primitive's own dart_api_type, `PlatformInt64`
+                // (io and web both, `PlatformInt64Util` abstracts the platform difference itself),
+                // and `cst_encode_u_64`/`usize` take `BigInt` — so `raw` must be widened first.
+                let (postfix, convert) = match mir.inner {
+                    MirTypePrimitive::I64 => ("i_64", "PlatformInt64Util.from(raw)"),
+                    MirTypePrimitive::Isize => ("isize", "PlatformInt64Util.from(raw)"),
+                    MirTypePrimitive::U64 => ("u_64", "BigInt.from(raw)"),
+                    MirTypePrimitive::Usize => ("usize", "BigInt.from(raw)"),
                     // frb-coverage:ignore-start
                     _ => return Acc::distribute(Some("throw UnimplementedError('Not implemented in this codec, please use the other one');".to_string())),
                     // frb-coverage:ignore-end
                 };
-                // `raw` is a plain Dart `int` here (see `CastedPrimitive`'s dart_api_type), but
-                // the wasm/JS wire boundary on web needs a `BigInt` for 64-bit ints, same as the
-                // `Time`/`Duration` arms above.
-                Acc {
-                    io: Some(format!("return cst_encode_{postfix}(raw);")),
-                    web: Some(format!("return cst_encode_{postfix}(BigInt.from(raw));")),
-                    ..Default::default()
-                }
+                Acc::distribute(Some(format!("return cst_encode_{postfix}({convert});")))
             }
             MirTypeDelegate::ProxyVariant(_)
             | MirTypeDelegate::ProxyEnum(_)
