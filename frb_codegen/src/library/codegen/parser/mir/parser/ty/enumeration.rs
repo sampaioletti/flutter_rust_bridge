@@ -110,11 +110,16 @@ impl TypeParserWithContext<'_, '_, '_> {
         variant_name: &MirIdent,
     ) -> anyhow::Result<MirVariantKind> {
         let attributes = FrbAttributes::parse(attrs)?;
+        // `dart_metadata` (e.g. a custom `JsonConverter`) is conventionally written as a doc
+        // comment directive on the variant itself, not on its first field, so it must also be
+        // parsed from `variant.attrs` rather than only `attrs` (the first field's attributes).
+        let variant_attributes = FrbAttributes::parse(&variant.attrs)?;
+        let dart_metadata_raw = [variant_attributes.dart_metadata(), attributes.dart_metadata()].concat();
         Ok(MirVariantKind::Struct(MirStruct {
             name: compute_enum_variant_kind_struct_name(&src_enum.name, variant_name),
             wrapper_name: None,
             is_fields_named: field_ident.is_some(),
-            dart_metadata_raw: attributes.dart_metadata(),
+            dart_metadata_raw,
             ignore: attributes.ignore(),
             needs_json_serializable: attributes.json_serializable(),
             generate_hash: true,
