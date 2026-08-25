@@ -143,9 +143,27 @@ impl WireDartCodecCstGeneratorEncoderTrait for DelegateWireDartCodecCstGenerator
                 "return cst_encode_{}(raw);",
                 self.mir.get_delegate().safe_ident(),
             ))),
+            MirTypeDelegate::CastedPrimitive(mir) => {
+                let postfix = match mir.inner {
+                    MirTypePrimitive::I64 => "i_64",
+                    MirTypePrimitive::Isize => "isize",
+                    MirTypePrimitive::U64 => "u_64",
+                    MirTypePrimitive::Usize => "usize",
+                    // frb-coverage:ignore-start
+                    _ => return Acc::distribute(Some("throw UnimplementedError('Not implemented in this codec, please use the other one');".to_string())),
+                    // frb-coverage:ignore-end
+                };
+                // `raw` is a plain Dart `int` here (see `CastedPrimitive`'s dart_api_type), but
+                // the wasm/JS wire boundary on web needs a `BigInt` for 64-bit ints, same as the
+                // `Time`/`Duration` arms above.
+                Acc {
+                    io: Some(format!("return cst_encode_{postfix}(raw);")),
+                    web: Some(format!("return cst_encode_{postfix}(BigInt.from(raw));")),
+                    ..Default::default()
+                }
+            }
             MirTypeDelegate::ProxyVariant(_)
             | MirTypeDelegate::ProxyEnum(_)
-            | MirTypeDelegate::CastedPrimitive(_)
             | MirTypeDelegate::CustomSerDes(_)
             | MirTypeDelegate::Lifetimeable(_) =>
                 Acc::distribute(Some("throw UnimplementedError('Not implemented in this codec, please use the other one');".to_string()))
