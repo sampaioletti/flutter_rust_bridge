@@ -24,6 +24,7 @@ pub struct MirEnum {
     pub mode: MirEnumMode,
     pub ignore: bool,
     pub needs_json_serializable: bool,
+    pub is_non_final: bool,
 }
 
 #[derive(Copy)]

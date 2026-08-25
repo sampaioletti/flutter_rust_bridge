@@ -70,6 +70,7 @@ impl TypeParserWithContext<'_, '_, '_> {
             mode,
             ignore,
             needs_json_serializable: attributes.json_serializable(),
+            is_non_final: attributes.non_final(),
         })
     }
 

@@ -40,11 +40,20 @@ impl EnumRefApiDartGenerator<'_> {
         let json_serializable_extra_code =
             compute_json_serializable_extra_code(src.needs_json_serializable, name);
 
+        // `#[frb(non_final)]` (or the legacy `flutter_rust_bridge:mutable` doc directive) opts
+        // the generated freezed union into `@unfreezed`, giving mutable fields instead of the
+        // default immutable `@freezed` ones.
+        let freezed_annotation = if src.is_non_final {
+            "@unfreezed"
+        } else {
+            "@freezed"
+        };
+
         Some(ApiDartGeneratedClass {
             namespace: src.name.namespace.clone(),
             class_name: name.clone(),
             code: format!(
-                "@freezed
+                "{freezed_annotation}
                 {sealed} class {name} with _${name} {maybe_implements_exception} {{
                     const {name}._();
 

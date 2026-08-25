@@ -292,6 +292,7 @@ mod frb_keyword {
     syn::custom_keyword!(dart_collection_deep_equality);
     syn::custom_keyword!(mirror);
     syn::custom_keyword!(non_final);
+    syn::custom_keyword!(mutable);
     syn::custom_keyword!(sync);
     syn::custom_keyword!(dart_async);
     syn::custom_keyword!(stream_dart_await);
@@ -393,6 +394,9 @@ impl Parse for FrbAttribute {
         let lookahead = input.lookahead1();
 
         let keyword_output = parse_keyword::<non_final, _>(input, &lookahead, non_final, NonFinal)
+            // `mutable` is a legacy alias for `non_final`, kept for backward compatibility with
+            // callers still using the old `flutter_rust_bridge:mutable` doc-comment directive.
+            .or_else(|| parse_keyword::<mutable, _>(input, &lookahead, mutable, NonFinal))
             .or_else(|| parse_keyword::<sync, _>(input, &lookahead, sync, Sync))
             .or_else(|| parse_keyword::<dart_async, _>(input, &lookahead, dart_async, DartAsync))
             .or_else(|| {
