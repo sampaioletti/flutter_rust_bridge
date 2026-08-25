@@ -20,13 +20,28 @@ impl EnumRefApiDartGenerator<'_> {
         &self,
         src: &MirEnum,
         extra_body: &str,
-        header: DartHeaderCode,
+        mut header: DartHeaderCode,
     ) -> Option<ApiDartGeneratedClass> {
         let variants = src
             .variants()
             .iter()
             .map(|variant| self.generate_mode_complex_variant(variant, src.is_non_final))
             .collect_vec()
+            .join("\n");
+
+        // Variant-level `dart_metadata` (e.g. a custom `JsonConverter`) may require its own
+        // import, which is otherwise never pulled into this file since enum variants aren't
+        // registered as standalone types with their own `dart_import`.
+        header.import += &src
+            .variants()
+            .iter()
+            .filter_map(|variant| match &variant.kind {
+                MirVariantKind::Struct(st) => Some(st.dart_metadata_raw.iter()),
+                MirVariantKind::Value => None,
+            })
+            .flatten()
+            .filter_map(|it| it.library.as_ref())
+            .map(|it| it.to_code())
             .join("\n");
         let name = &self.mir.ident.0.name;
         let sealed = if self.context.config.dart3 {
