@@ -15,9 +15,19 @@ import 'package:meta/meta.dart';
 /// whose name is a debug label only (routing is by object identity, not by this string), so the tag
 /// is harmless there — added once, here, rather than special-cased per platform.
 String _newInstanceTag() {
+  // `Random.nextInt`'s documented contract allows `max` up to and including 2**32, but passing
+  // exactly `1 << 32` throws on web (`RangeError: max must be in range 0 < max <= 2^32, was 0`) —
+  // confirmed live on stage, both mobile and desktop Chromium, immediately on every page load, since
+  // `_newInstanceTag` runs the first time any port/stream name is generated during bootstrap. The
+  // Dart VM (native, and the isolate-based test in `port_generator_test.dart`) evaluates the same
+  // call correctly, which is why this shipped without being caught locally — only a real web build
+  // exercises the dart2js-compiled path where the exact `2**32` boundary is mishandled. `0x7FFFFFFF`
+  // (2**31 - 1) stays unambiguously inside every platform's native/JS-safe integer range, at the cost
+  // of 1 bit of entropy per call — irrelevant for this tag's purpose (avoiding a name collision
+  // between two tabs, not cryptographic security).
   final rand = Random();
-  final high = rand.nextInt(1 << 32);
-  final low = rand.nextInt(1 << 32);
+  final high = rand.nextInt(0x7FFFFFFF);
+  final low = rand.nextInt(0x7FFFFFFF);
   return '${high.toRadixString(16)}${low.toRadixString(16)}';
 }
 
